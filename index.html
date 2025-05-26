@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jogo da Cobrinha</title>
+  <style>
+    body {
+      background: #111;
+      color: #eee;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #game-container {
+      position: relative;
+    }
+
+    canvas {
+      background-color: #000;
+      border: 3px solid #0f0;
+      display: block;
+    }
+
+    .menu {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .menu h1 {
+      color: #0f0;
+      margin-bottom: 20px;
+      font-size: 32px;
+    }
+
+    .menu p {
+      margin: 5px;
+    }
+
+    .menu button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 15px;
+      background-color: #0f0;
+      border: none;
+      cursor: pointer;
+      color: #000;
+      font-weight: bold;
+      border-radius: 6px;
+    }
+
+    .scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #0f0;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="400" height="400"></canvas>
+    <div class="scoreboard">
+      Pontuação: <span id="score">0</span><br />
+      Recorde: <span id="highScore">0</span>
+    </div>
+    <div id="start-menu" class="menu">
+      <h1>🐍 Jogo da Cobrinha</h1>
+      <p>Use as setas ou W A S D para jogar</p>
+      <p>Coma os blocos vermelhos e não bata!</p>
+      <button onclick="startGame()">Iniciar Jogo</button>
+    </div>
+    <div id="game-over-menu" class="menu" style="display:none;">
+      <h1>💀 Fim de jogo!</h1>
+      <p>Sua pontuação: <span id="finalScore">0</span></p>
+      <p>Recorde: <span id="finalHighScore">0</span></p>
+      <button onclick="restartGame()">Jogar Novamente</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const box = 20;
+    const canvasSize = 400;
+    const rows = canvasSize / box;
+    const cols = canvasSize / box;
+
+    let snake, food, direction, score, highScore, gameInterval;
+
+    function initGame() {
+      snake = [{ x: 9 * box, y: 9 * box }];
+      direction = "right";
+      food = {
+        x: Math.floor(Math.random() * cols) * box,
+        y: Math.floor(Math.random() * rows) * box
+      };
+      score = 0;
+      document.getElementById("score").textContent = score;
+      highScore = localStorage.getItem("snakeHighScore") || 0;
+      document.getElementById("highScore").textContent = highScore;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "#0f0" : "#0a0";
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      ctx.fillStyle = "red";
+      ctx.fillRect(food.x, food.y, box, box);
+
+      let headX = snake[0].x;
+      let headY = snake[0].y;
+
+      if (direction === "left") headX -= box;
+      if (direction === "right") headX += box;
+      if (direction === "up") headY -= box;
+      if (direction === "down") headY += box;
+
+      if (
+        headX < 0 || headY < 0 ||
+        headX >= canvasSize || headY >= canvasSize ||
+        collision(headX, headY, snake)
+      ) {
+        clearInterval(gameInterval);
+        showGameOver();
+        return;
+      }
+
+      if (headX === food.x && headY === food.y) {
+        food = {
+          x: Math.floor(Math.random() * cols) * box,
+          y: Math.floor(Math.random() * rows) * box
+        };
+        score++;
+        document.getElementById("score").textContent = score;
+
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem("snakeHighScore", highScore);
+          document.getElementById("highScore").textContent = highScore;
+        }
+      } else {
+        snake.pop();
+      }
+
+      const newHead = { x: headX, y: headY };
+      snake.unshift(newHead);
+    }
+
+    function collision(x, y, array) {
+      for (let i = 0; i < array.length; i++) {
+        if (array[i].x === x && array[i].y === y) return true;
+      }
+      return false;
+    }
+
+    function changeDirection(event) {
+      const key = event.key.toLowerCase();
+
+      if ((key === "arrowleft" || key === "a") && direction !== "right")
+        direction = "left";
+      else if ((key === "arrowup" || key === "w") && direction !== "down")
+        direction = "up";
+      else if ((key === "arrowright" || key === "d") && direction !== "left")
+        direction = "right";
+      else if ((key === "arrowdown" || key === "s") && direction !== "up")
+        direction = "down";
+    }
+
+    function startGame() {
+      document.getElementById("start-menu").style.display = "none";
+      document.getElementById("game-over-menu").style.display = "none";
+      initGame();
+      gameInterval = setInterval(draw, 100);
+    }
+
+    function restartGame() {
+      startGame();
+    }
+
+    function showGameOver() {
+      document.getElementById("finalScore").textContent = score;
+      document.getElementById("finalHighScore").textContent = highScore;
+      document.getElementById("game-over-menu").style.display = "flex";
+    }
+
+    document.addEventListener("keydown", changeDirection);
+  </script>
+</body>
+</html>
